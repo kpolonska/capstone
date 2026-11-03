@@ -1,11 +1,33 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: KV store network - VPC, 2 public + 2 private subnets, Internet Gateway
 
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+  PublicSubnetACidr:
+    Type: String
+    Default: 10.0.0.0/24
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+  PublicSubnetBCidr:
+    Type: String
+    Default: 10.0.1.0/24
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+  PrivateSubnetACidr:
+    Type: String
+    Default: 10.0.10.0/24
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+  PrivateSubnetBCidr:
+    Type: String
+    Default: 10.0.11.0/24
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+
 Resources:
   Vpc:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags: [{ Key: Name, Value: kv-vpc }]
@@ -25,7 +47,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: 10.0.0.0/24
+      CidrBlock: !Ref PublicSubnetACidr
       AvailabilityZone: !Select [0, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags: [{ Key: Name, Value: kv-public-a }]
@@ -34,7 +56,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: !Ref PublicSubnetBCidr
       AvailabilityZone: !Select [1, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags: [{ Key: Name, Value: kv-public-b }]
@@ -43,7 +65,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: 10.0.10.0/24
+      CidrBlock: !Ref PrivateSubnetACidr
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags: [{ Key: Name, Value: kv-private-a }]
 
@@ -51,7 +73,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: 10.0.11.0/24
+      CidrBlock: !Ref PrivateSubnetBCidr
       AvailabilityZone: !Select [1, !GetAZs '']
       Tags: [{ Key: Name, Value: kv-private-b }]
 
@@ -102,16 +124,16 @@ Resources:
 Outputs:
   VpcId:
     Value: !Ref Vpc
-    Export: { Name: kv-network-VpcId }
+    Export: { Name: !Sub '${AWS::StackName}-VpcId' }
   PublicSubnetA:
     Value: !Ref PublicSubnetA
-    Export: { Name: kv-network-PublicSubnetA }
+    Export: { Name: !Sub '${AWS::StackName}-PublicSubnetA' }
   PublicSubnetB:
     Value: !Ref PublicSubnetB
-    Export: { Name: kv-network-PublicSubnetB }
+    Export: { Name: !Sub '${AWS::StackName}-PublicSubnetB' }
   PrivateSubnetA:
     Value: !Ref PrivateSubnetA
-    Export: { Name: kv-network-PrivateSubnetA }
+    Export: { Name: !Sub '${AWS::StackName}-PrivateSubnetA' }
   PrivateSubnetB:
     Value: !Ref PrivateSubnetB
-    Export: { Name: kv-network-PrivateSubnetB }
+    Export: { Name: !Sub '${AWS::StackName}-PrivateSubnetB' }
