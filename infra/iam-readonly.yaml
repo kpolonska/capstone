@@ -9,26 +9,56 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: AllowViewOnly
+          - Sid: AllowMetadataReadsOnly
             Effect: Allow
             Action:
               - 'ec2:Describe*'
-              - 'ec2:Get*'
-              - 's3:List*'
-              - 's3:GetBucket*'
-              - 'iam:List*'
-              - 'iam:Get*'
+              - 's3:ListAllMyBuckets'
+              - 's3:GetBucketLocation'
+              - 'iam:ListRoles'
+              - 'iam:ListPolicies'
+              - 'iam:ListAttachedRolePolicies'
+              - 'iam:ListRolePolicies'
+              - 'iam:GetRole'
+              - 'iam:GetPolicy'
+              - 'iam:GetPolicyVersion'
               - 'cloudformation:Describe*'
-              - 'cloudformation:List*'
+              - 'cloudformation:ListStacks'
+              - 'cloudformation:ListStackResources'
+              - 'cloudformation:ListExports'
               - 'dynamodb:Describe*'
-              - 'dynamodb:List*'
-              - 'lambda:List*'
-              - 'lambda:Get*'
+              - 'dynamodb:ListTables'
               - 'cloudwatch:Describe*'
-              - 'cloudwatch:Get*'
-              - 'cloudwatch:List*'
-              - 'logs:Describe*'
-              - 'logs:Get*'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:GetMetricData'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+            Resource: '*'
+          - Sid: DenySensitiveReads
+            Effect: Deny
+            Action:
+              - 'ec2:GetPasswordData'
+              - 'ec2:GetConsoleOutput'
+              - 'ec2:GetConsoleScreenshot'
+              - 'ec2:GetLaunchTemplateData'
+              - 'ec2:DescribeInstanceAttribute'
+              - 'ec2:DescribeLaunchTemplateVersions'
+              - 'lambda:GetFunction*'
+              - 'lambda:ListFunctions'
+              - 'logs:GetLogEvents'
+              - 'logs:FilterLogEvents'
+              - 'logs:StartQuery'
+              - 'logs:GetQueryResults'
+              - 'secretsmanager:GetSecretValue'
+              - 'ssm:GetParameter*'
+              - 'kms:Decrypt'
+              - 's3:GetObject*'
+              - 'dynamodb:GetItem'
+              - 'dynamodb:BatchGetItem'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'cloudformation:GetTemplate*'
             Resource: '*'
           - Sid: DenyAnyWrite
             Effect: Deny
@@ -37,6 +67,7 @@ Resources:
               - 'ec2:Delete*'
               - 'ec2:Modify*'
               - 'ec2:RunInstances'
+              - 'ec2:TerminateInstances'
               - 's3:Put*'
               - 's3:Delete*'
               - 'iam:Create*'
@@ -63,7 +94,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/LabRole'
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - !Ref ReadOnlyPolicy
