@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Read-only policy and assumable role (cannot be deployed in the AWS Academy sandbox)
+
+Resources:
+  ReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: kv-readonly
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowViewOnly
+            Effect: Allow
+            Action:
+              - 'ec2:Describe*'
+              - 'ec2:Get*'
+              - 's3:List*'
+              - 's3:GetBucket*'
+              - 'iam:List*'
+              - 'iam:Get*'
+              - 'cloudformation:Describe*'
+              - 'cloudformation:List*'
+              - 'dynamodb:Describe*'
+              - 'dynamodb:List*'
+              - 'lambda:List*'
+              - 'lambda:Get*'
+              - 'cloudwatch:Describe*'
+              - 'cloudwatch:Get*'
+              - 'cloudwatch:List*'
+              - 'logs:Describe*'
+              - 'logs:Get*'
+            Resource: '*'
+          - Sid: DenyAnyWrite
+            Effect: Deny
+            Action:
+              - 'ec2:Create*'
+              - 'ec2:Delete*'
+              - 'ec2:Modify*'
+              - 'ec2:RunInstances'
+              - 's3:Put*'
+              - 's3:Delete*'
+              - 'iam:Create*'
+              - 'iam:Delete*'
+              - 'iam:Put*'
+              - 'iam:Attach*'
+              - 'cloudformation:Create*'
+              - 'cloudformation:Delete*'
+              - 'cloudformation:Update*'
+              - 'dynamodb:Put*'
+              - 'dynamodb:Delete*'
+              - 'dynamodb:Update*'
+              - 'lambda:Create*'
+              - 'lambda:Delete*'
+              - 'lambda:Update*'
+            Resource: '*'
+
+  ReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kv-readonly-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref ReadOnlyPolicy
+
+Outputs:
+  RoleArn:
+    Value: !GetAtt ReadOnlyRole.Arn
