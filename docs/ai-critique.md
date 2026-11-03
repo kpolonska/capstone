@@ -1,0 +1,16 @@
+# AI critique of the M1 infrastructure
+
+
+
+|#|Severity|Finding|Why it matters|Suggested fix|
+|-|-|-|-|-|
+|1|High|Private subnets have no way out: no NAT Gateway and no VPC endpoints.|M2 shards cannot download packages, pull images, send logs or use SSM.|S3 gateway endpoint (free), packages baked into the image or delivered via S3, optionally one temporary NAT.|
+|2|High|Role trust policy is too broad: Principal is the account root, so any identity in the account allowed to call sts:AssumeRole can use the role.|Breaks least privilege.|Name the specific user or role that may assume it, optionally with a condition.|
+|3|Medium|"Read-only" is not strictly read-only: Get\* and List\* include sensitive reads (ec2:GetPasswordData, lambda:GetFunction, logs:GetLogEvents). The Deny list covers only 6 services.|A viewer could read secrets; unlisted services have no Deny guardrail.|List the exact actions needed or build on ViewOnlyAccess/SecurityAudit, and Deny sensitive reads explicitly.|
+|4|Medium|Hardcoded names (kv-readonly, kv-readonly-role) and CIDRs in the templates.|A second deployment in the same account fails with AlreadyExists; the network is not reusable.|Let CloudFormation generate names; make CIDRs template parameters.|
+|5|Medium|No protection against accidental deletion of kv-network.|After M2, deleting the network takes the servers' connectivity down.|Enable termination protection (update-termination-protection); disable it only for planned teardowns.|
+|6|Medium|No cost guard: nothing alerts or cleans up if kv-app is left running.|A forgotten stack costs \~$28.6/month, over half of the $50 credit. AWS Budgets may be blocked in the sandbox (not tested).|Tag resources (Project=kv), add a down script that deletes kv-app, check "Used $X of $Y" at the start and end of each session.|
+|7|Low|Recreatability is proven only for the network, and only through hand-typed commands.|M2 CI/CD needs this automated; manual steps invite mistakes.|One script for deploy, verify and teardown, reused by the M2 pipeline.|
+
+## 
+
