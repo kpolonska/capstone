@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+YCSB binding for the kv-app REST API. Copy this folder to YCSB/kvrest so that
+the relative parent path below resolves to YCSB/binding-parent.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>site.ycsb</groupId>
+    <artifactId>binding-parent</artifactId>
+    <version>0.18.0-SNAPSHOT</version>
+    <relativePath>../binding-parent</relativePath>
+  </parent>
+
+  <artifactId>kvrest-binding</artifactId>
+  <name>kv-app REST DB Binding</name>
+  <packaging>jar</packaging>
+
+  <properties>
+    <!-- java.net.http (the HTTP client) is part of Java 11 and later -->
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>site.ycsb</groupId>
+      <artifactId>core</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+</project>
