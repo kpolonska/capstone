@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: KV store app - coordinator in public subnet, two shards in private subnets
+
+Parameters:
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+  CodeBucket:
+    Type: String
+    Default: kv-code-211125386643
+  InstanceType:
+    Type: String
+    Default: t3.micro
+
+Resources:
+  CoordinatorSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Coordinator API, reachable from the internet
+      VpcId: !ImportValue kv-network-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      Tags: [{ Key: Name, Value: kv-coordinator-sg }]
+
+  ShardSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Shard API, reachable only from the coordinator
+      VpcId: !ImportValue kv-network-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8081
+          ToPort: 8081
+          SourceSecurityGroupId: !Ref CoordinatorSG
+      Tags: [{ Key: Name, Value: kv-shard-sg }]
+
+  Coordinator:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      IamInstanceProfile: !Ref InstanceProfileName
+      SubnetId: !ImportValue kv-network-PublicSubnetA
+      SecurityGroupIds: [!Ref CoordinatorSG]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf install -y python3
+          aws s3 cp s3://${CodeBucket}/app.zip /opt/app.zip
+          python3 -m zipfile -e /opt/app.zip /opt/kv
+          cat > /etc/systemd/system/kv.service <<'UNIT'
+          [Unit]
+          Description=kv-app
+          After=network-online.target
+          [Service]
+          WorkingDirectory=/opt/kv
+          EnvironmentFile=/etc/kv.env
+          ExecStart=/usr/bin/python3 -m kvapp
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          echo "ROLE=coordinator" > /etc/kv.env
+          systemctl daemon-reload && systemctl enable --now kv
+      Tags: [{ Key: Name, Value: kv-coordinator }]
+
+  ShardA:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      IamInstanceProfile: !Ref InstanceProfileName
+      SubnetId: !ImportValue kv-network-PrivateSubnetA
+      SecurityGroupIds: [!Ref ShardSG]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf install -y python3
+          aws s3 cp s3://${CodeBucket}/app.zip /opt/app.zip
+          python3 -m zipfile -e /opt/app.zip /opt/kv
+          cat > /etc/systemd/system/kv.service <<'UNIT'
+          [Unit]
+          Description=kv-app
+          After=network-online.target
+          [Service]
+          WorkingDirectory=/opt/kv
+          EnvironmentFile=/etc/kv.env
+          ExecStart=/usr/bin/python3 -m kvapp
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          echo "ROLE=shard" > /etc/kv.env
+          echo "SHARD_ID=a" >> /etc/kv.env
+          systemctl daemon-reload && systemctl enable --now kv
+      Tags: [{ Key: Name, Value: kv-shard-a }]
+
+  ShardB:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      IamInstanceProfile: !Ref InstanceProfileName
+      SubnetId: !ImportValue kv-network-PrivateSubnetB
+      SecurityGroupIds: [!Ref ShardSG]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf install -y python3
+          aws s3 cp s3://${CodeBucket}/app.zip /opt/app.zip
+          python3 -m zipfile -e /opt/app.zip /opt/kv
+          cat > /etc/systemd/system/kv.service <<'UNIT'
+          [Unit]
+          Description=kv-app
+          After=network-online.target
+          [Service]
+          WorkingDirectory=/opt/kv
+          EnvironmentFile=/etc/kv.env
+          ExecStart=/usr/bin/python3 -m kvapp
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          echo "ROLE=shard" > /etc/kv.env
+          echo "SHARD_ID=b" >> /etc/kv.env
+          systemctl daemon-reload && systemctl enable --now kv
+      Tags: [{ Key: Name, Value: kv-shard-b }]
+
+Outputs:
+  CoordinatorPublicIp:
+    Value: !GetAtt Coordinator.PublicIp
+  ShardAPrivateIp:
+    Value: !GetAtt ShardA.PrivateIp
+  ShardBPrivateIp:
+    Value: !GetAtt ShardB.PrivateIp
