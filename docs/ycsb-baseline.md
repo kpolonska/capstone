@@ -20,10 +20,10 @@ Raw output: `docs/raw/ycsb-load-a.txt`.
 | READ | 4,969 | 429.1 ms | 398.8 ms | 797.7 ms | 854.5 ms | 2,055.2 ms | all `OK` |
 | UPDATE | 5,031 | 192.5 ms | 176.0 ms | 209.8 ms | 585.7 ms | 1,434.6 ms | all `OK` |
 
-Raw output: `docs/raw/ycsb-run-a.txt`. Overall throughput: TBD (from the `[OVERALL]` line in that file).
+Raw output: `docs/raw/ycsb-run-a.txt`. The `[OVERALL]` throughput line was not captured in the saved file. Estimated throughput: about 26 ops/sec, from the per-operation averages (sum of latencies, about 3,100 s, divided by 8 threads, gives about 388 s for 10,000 operations).
 
 ### Workloads B and C
-Not run yet. Workload E is skipped: the store has no range queries (ADR-006).
+Not run. This baseline covers the load phase and workload A only, recorded as it stands. Workload E is skipped: the store has no range queries (ADR-006).
 
 ## Network and server context
 | Measurement | Where | Result |
