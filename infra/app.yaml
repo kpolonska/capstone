@@ -11,6 +11,10 @@ Parameters:
   InstanceType:
     Type: String
     Default: t3.micro
+  CodeVersion:
+    Type: String
+    Default: dev
+    Description: Changes with each code release; a new value replaces the instances so they run the new zip.
 
 Resources:
   CoordinatorSG:
@@ -48,6 +52,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
+          # code-version: ${CodeVersion}
           dnf install -y python3
           aws s3 cp s3://${CodeBucket}/app.zip /opt/app.zip
           python3 -m zipfile -e /opt/app.zip /opt/kv
@@ -78,6 +83,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
+          # code-version: ${CodeVersion}
           dnf install -y python3
           aws s3 cp s3://${CodeBucket}/app.zip /opt/app.zip
           python3 -m zipfile -e /opt/app.zip /opt/kv
@@ -109,6 +115,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
+          # code-version: ${CodeVersion}
           dnf install -y python3
           aws s3 cp s3://${CodeBucket}/app.zip /opt/app.zip
           python3 -m zipfile -e /opt/app.zip /opt/kv

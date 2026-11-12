@@ -1,0 +1,66 @@
+name: test-and-deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Unit and end-to-end tests
+        run: cd app && python -m unittest -v tests.test_kvapp
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package the application
+        run: cd app && python -m zipfile -c app.zip kvapp
+      - name: Upload the package to S3
+        run: aws s3 cp app/app.zip s3://kv-code-211125386643/app.zip
+      - name: Deploy the kv-app stack
+        run: >
+          aws cloudformation deploy --template-file infra/app.yaml --stack-name kv-app
+          --no-fail-on-empty-changeset --parameter-overrides CodeVersion=${{ github.sha }}
+      - name: Read stack outputs
+        id: out
+        run: |
+          get() { aws cloudformation describe-stacks --stack-name kv-app \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          echo "coord=$(get CoordinatorPublicIp)" >> "$GITHUB_OUTPUT"
+          echo "shard_a=$(get ShardAPrivateIp)" >> "$GITHUB_OUTPUT"
+          echo "shard_b=$(get ShardBPrivateIp)" >> "$GITHUB_OUTPUT"
+      - name: Wait for the coordinator
+        run: |
+          for i in $(seq 1 20); do
+            curl -fsS "http://${{ steps.out.outputs.coord }}:8080/health" && exit 0
+            sleep 15
+          done
+          exit 1
+      - name: Register the shards
+        run: |
+          C="http://${{ steps.out.outputs.coord }}:8080/shards"
+          curl -fsS -X POST "$C" -H "Content-Type: application/json" \
+            -d "{\"id\":\"a\",\"url\":\"http://${{ steps.out.outputs.shard_a }}:8081\"}"
+          curl -fsS -X POST "$C" -H "Content-Type: application/json" \
+            -d "{\"id\":\"b\",\"url\":\"http://${{ steps.out.outputs.shard_b }}:8081\"}"
+      - name: Smoke test through the coordinator
+        run: |
+          T="http://${{ steps.out.outputs.coord }}:8080/tables/smoke"
+          curl -fsS -X PUT "$T"
+          curl -fsS -X PUT "$T/items/k" -d "v"
+          test "$(curl -fsS "$T/items/k")" = "v"
+          curl -fsS -X DELETE "$T/items/k"
